@@ -3,598 +3,676 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>한글 타자 속도 테스트</title>
+<title>한글 공감각 - Hangul Synesthesia</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0f0f1a;
+    background: #050510;
     color: #e0e0e0;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
   }
 
-  .container {
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: 720px;
-    padding: 20px;
+    height: 100%;
+    z-index: 0;
   }
+
+  .ui-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .header {
+    text-align: center;
+    padding: 24px 20px 0;
+    transition: opacity 0.5s;
+  }
+
+  .header.faded { opacity: 0.3; }
+  .header:hover { opacity: 1; }
 
   h1 {
-    text-align: center;
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    background: linear-gradient(135deg, #6ee7b7, #3b82f6);
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 8px;
+    background: linear-gradient(135deg, #a78bfa, #6ee7b7, #f9a8d4);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .subtitle {
-    text-align: center;
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-bottom: 32px;
+    font-size: 0.8rem;
+    color: #4a4a6a;
+    margin-top: 6px;
+    letter-spacing: 2px;
   }
 
-  .sentence-box {
-    background: #1a1a2e;
-    border: 1px solid #2a2a4a;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 16px;
-    min-height: 80px;
-    line-height: 2;
-    font-size: 1.2rem;
-    letter-spacing: 0.5px;
-    position: relative;
-    overflow-wrap: break-word;
-  }
-
-  .sentence-box .char {
-    display: inline;
-    transition: color 0.1s;
-  }
-
-  .sentence-box .char.correct { color: #4ade80; }
-  .sentence-box .char.incorrect {
-    color: #f87171;
-    text-decoration: underline;
-    text-decoration-color: #f8717180;
-  }
-  .sentence-box .char.pending { color: #4a4a6a; }
-  .sentence-box .char.current {
-    color: #e0e0e0;
-    border-bottom: 2px solid #3b82f6;
-    animation: blink 1s step-end infinite;
-  }
-
-  @keyframes blink {
-    50% { border-bottom-color: transparent; }
-  }
-
-  .input-area {
-    width: 100%;
-    background: #16162a;
-    border: 2px solid #2a2a4a;
-    border-radius: 12px;
-    padding: 16px 20px;
-    font-size: 1.1rem;
-    color: #e0e0e0;
-    outline: none;
-    resize: none;
-    height: 60px;
-    line-height: 1.6;
-    transition: border-color 0.2s;
-    font-family: inherit;
-  }
-
-  .input-area:focus { border-color: #3b82f6; }
-  .input-area:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .stats-bar {
+  .bottom-ui {
+    padding: 0 20px 24px;
     display: flex;
-    justify-content: center;
-    gap: 32px;
-    margin: 20px 0;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
   }
 
-  .stat-item {
+  .typed-text {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    max-width: 600px;
+    word-break: break-all;
+    line-height: 1.8;
+    min-height: 28px;
+    letter-spacing: 1px;
+  }
+
+  .input-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 1rem;
+    pointer-events: auto;
   }
 
-  .stat-icon { font-size: 1.2rem; }
-  .stat-value {
-    font-weight: 700;
-    font-size: 1.3rem;
+  .text-input {
+    width: 320px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
     color: #fff;
-    min-width: 48px;
-    text-align: right;
-  }
-  .stat-label {
-    color: #64748b;
-    font-size: 0.85rem;
-  }
-
-  .buttons {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 24px;
-  }
-
-  .btn {
-    padding: 12px 28px;
-    border: none;
-    border-radius: 8px;
     font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.2s;
+    outline: none;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
     font-family: inherit;
   }
 
-  .btn:hover { transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
-    color: #fff;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  .text-input:focus {
+    border-color: rgba(167, 139, 250, 0.5);
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.15);
   }
 
-  .btn-secondary {
-    background: #2a2a4a;
-    color: #e0e0e0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  }
+  .text-input::placeholder { color: rgba(255, 255, 255, 0.2); }
 
-  /* Result overlay */
-  .result-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .result-overlay.show {
+  .controls {
     display: flex;
-    animation: fadeIn 0.3s ease;
+    gap: 8px;
+    pointer-events: auto;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  .btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    backdrop-filter: blur(10px);
+    letter-spacing: 1px;
   }
 
-  .result-card {
-    background: #1a1a2e;
-    border: 1px solid #2a2a4a;
-    border-radius: 20px;
-    padding: 40px;
-    text-align: center;
-    max-width: 420px;
-    width: 90%;
-    animation: slideUp 0.4s ease;
+  .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
   }
 
-  @keyframes slideUp {
-    from { transform: translateY(30px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-
-  .result-grade {
-    font-size: 4rem;
-    margin-bottom: 4px;
-  }
-
-  .result-grade-label {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 24px;
-    background: linear-gradient(135deg, #6ee7b7, #3b82f6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .result-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .jamo-info {
+    display: flex;
     gap: 16px;
-    margin-bottom: 28px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.25);
+    letter-spacing: 1px;
   }
 
-  .result-stat {
-    background: #12122a;
-    border-radius: 12px;
-    padding: 16px;
+  .guide {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 5;
+    transition: opacity 0.8s;
+    pointer-events: none;
   }
 
-  .result-stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #fff;
+  .guide.hidden { opacity: 0; }
+
+  .guide-text {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 4px;
+    animation: pulse 3s ease-in-out infinite;
   }
 
-  .result-stat-label {
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-top: 4px;
+  @keyframes pulse {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 0.3; }
   }
 
-  .result-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
+  .char-display {
+    position: fixed;
+    z-index: 3;
+    font-size: 3rem;
+    font-weight: 100;
+    pointer-events: none;
+    animation: charFade 1.5s ease-out forwards;
   }
 
-  .progress-bar {
-    width: 100%;
-    height: 4px;
-    background: #2a2a4a;
-    border-radius: 2px;
-    margin-bottom: 20px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #6ee7b7);
-    border-radius: 2px;
-    transition: width 0.15s ease;
-    width: 0%;
-  }
-
-  .sentence-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 0.8rem;
-    color: #64748b;
+  @keyframes charFade {
+    0% { opacity: 0.6; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(1.5) translateY(-40px); }
   }
 
   @media (max-width: 480px) {
-    h1 { font-size: 1.5rem; }
-    .sentence-box { font-size: 1rem; padding: 16px; }
-    .stats-bar { gap: 16px; }
-    .stat-value { font-size: 1.1rem; }
-    .result-card { padding: 28px 20px; }
+    h1 { font-size: 1.2rem; letter-spacing: 4px; }
+    .text-input { width: 240px; font-size: 0.9rem; }
   }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>한글 타자 속도 테스트</h1>
-  <p class="subtitle">문장을 보고 정확하게 따라 입력하세요</p>
+<canvas id="canvas"></canvas>
 
-  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-
-  <div class="sentence-info">
-    <span id="sentenceNum">문장 1 / 1</span>
-    <span id="charCount">0 / 0 글자</span>
-  </div>
-
-  <div class="sentence-box" id="sentenceBox"></div>
-
-  <textarea class="input-area" id="inputArea" placeholder="여기에 입력하세요..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-
-  <div class="stats-bar">
-    <div class="stat-item">
-      <span class="stat-icon">&#9201;</span>
-      <span class="stat-value" id="timerDisplay">0:00</span>
-      <span class="stat-label">경과</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-icon">&#9997;</span>
-      <span class="stat-value" id="wpmDisplay">0</span>
-      <span class="stat-label">타/분</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-icon">&#127919;</span>
-      <span class="stat-value" id="accuracyDisplay">100%</span>
-      <span class="stat-label">정확도</span>
-    </div>
-  </div>
-
-  <div class="buttons">
-    <button class="btn btn-secondary" onclick="restartSame()">다시 시작</button>
-    <button class="btn btn-primary" onclick="nextSentence()">다음 문장</button>
-  </div>
+<div class="guide" id="guide">
+  <div class="guide-text">한글을 입력하면 소리와 빛이 됩니다</div>
 </div>
 
-<!-- Result Overlay -->
-<div class="result-overlay" id="resultOverlay">
-  <div class="result-card">
-    <div class="result-grade" id="resultGradeIcon"></div>
-    <div class="result-grade-label" id="resultGradeLabel"></div>
-    <div class="result-stats">
-      <div class="result-stat">
-        <div class="result-stat-value" id="resultWpm">0</div>
-        <div class="result-stat-label">타/분</div>
-      </div>
-      <div class="result-stat">
-        <div class="result-stat-value" id="resultAccuracy">0%</div>
-        <div class="result-stat-label">정확도</div>
-      </div>
-      <div class="result-stat">
-        <div class="result-stat-value" id="resultTime">0:00</div>
-        <div class="result-stat-label">소요 시간</div>
-      </div>
-      <div class="result-stat">
-        <div class="result-stat-value" id="resultKeystrokes">0</div>
-        <div class="result-stat-label">총 타수</div>
-      </div>
+<div class="ui-layer">
+  <div class="header" id="header">
+    <h1>한글 공감각</h1>
+    <p class="subtitle">HANGUL SYNESTHESIA</p>
+  </div>
+
+  <div class="bottom-ui">
+    <div class="typed-text" id="typedText"></div>
+    <div class="input-row">
+      <input type="text" class="text-input" id="textInput"
+        placeholder="한글을 입력하세요..."
+        autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
-    <div class="result-buttons">
-      <button class="btn btn-secondary" onclick="closeResult(); restartSame();">다시 도전</button>
-      <button class="btn btn-primary" onclick="closeResult(); nextSentence();">다음 문장</button>
+    <div class="controls">
+      <button class="btn" onclick="clearCanvas()">지우기</button>
+      <button class="btn" onclick="saveImage()">저장</button>
+      <button class="btn" onclick="toggleFullscreen()">전체화면</button>
     </div>
+    <div class="jamo-info" id="jamoInfo"></div>
   </div>
 </div>
 
 <script>
-const sentences = [
-  "가는 말이 고와야 오는 말이 곱다",
-  "하늘이 무너져도 솟아날 구멍이 있다",
-  "서당 개 삼 년이면 풍월을 읊는다",
-  "고생 끝에 낙이 온다",
-  "백지장도 맞들면 낫다",
-  "뜻이 있는 곳에 길이 있다",
-  "천 리 길도 한 걸음부터 시작된다",
-  "시작이 반이다",
-  "호랑이도 제 말 하면 온다",
-  "소 잃고 외양간 고친다",
-  "오늘 할 일을 내일로 미루지 마라",
-  "아는 것이 힘이다",
-  "실패는 성공의 어머니이다",
-  "낮말은 새가 듣고 밤말은 쥐가 듣는다",
-  "공든 탑이 무너지랴",
-  "세상에서 가장 아름다운 것은 보이지 않는다",
-  "배움에는 끝이 없고 노력에는 한계가 없다",
-  "꿈을 꾸는 사람만이 그 꿈을 이룰 수 있다",
-  "작은 것에도 감사할 줄 아는 사람이 행복하다",
-  "매일 조금씩 나아가면 결국 목표에 도달한다",
-  "비 온 뒤에 땅이 굳어진다",
-  "바람이 불지 않으면 노를 저어라",
-  "인생은 짧고 예술은 길다",
-  "가장 어두운 밤도 결국 새벽이 온다",
-  "우리가 두려워할 것은 두려움 그 자체뿐이다",
+// ========== CANVAS SETUP ==========
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// ========== JAMO TABLES ==========
+const CHOSEONG = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'.split('');
+const JUNGSEONG = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'.split('');
+const JONGSEONG = ['', 'ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+
+// 양성 모음 인덱스
+const YANG_VOWELS = new Set([0,2,8,9,10,11,12]); // ㅏ,ㅑ,ㅗ,ㅘ,ㅙ,ㅚ,ㅛ
+
+function decompose(char) {
+  const code = char.charCodeAt(0);
+  if (code < 0xAC00 || code > 0xD7A3) return null;
+  const offset = code - 0xAC00;
+  const jong = offset % 28;
+  const jung = ((offset - jong) / 28) % 21;
+  const cho = Math.floor(offset / (21 * 28));
+  return { cho, jung, jong };
+}
+
+// ========== SOUND ENGINE ==========
+let audioCtx = null;
+let masterGain = null;
+let reverbNode = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.3;
+
+  // Simple reverb using delay
+  const delay1 = audioCtx.createDelay();
+  delay1.delayTime.value = 0.12;
+  const delay2 = audioCtx.createDelay();
+  delay2.delayTime.value = 0.24;
+  const gain1 = audioCtx.createGain();
+  gain1.gain.value = 0.3;
+  const gain2 = audioCtx.createGain();
+  gain2.gain.value = 0.15;
+
+  masterGain.connect(audioCtx.destination);
+  masterGain.connect(delay1);
+  masterGain.connect(delay2);
+  delay1.connect(gain1);
+  delay2.connect(gain2);
+  gain1.connect(audioCtx.destination);
+  gain2.connect(audioCtx.destination);
+}
+
+// Pentatonic scale frequencies (C minor pentatonic across octaves)
+const SCALE = [
+  130.81, 155.56, 164.81, 196.00, 233.08,  // C3 Eb3 F3 G3 Bb3
+  261.63, 311.13, 329.63, 392.00, 466.16,  // C4 Eb4 F4 G4 Bb4
+  523.25, 622.25, 659.25, 783.99, 932.33,  // C5 Eb5 F5 G5 Bb5
+  1046.50, 1244.51, 1318.51, 1567.98        // C6 Eb6 F6 G6
 ];
 
-let currentSentence = "";
-let currentIndex = 0;
-let sentenceIndex = 0;
-let startTime = null;
-let timerInterval = null;
-let isStarted = false;
-let isFinished = false;
-let totalKeystrokes = 0;
-let correctKeystrokes = 0;
+function playJamoSound(cho, jung, jong) {
+  if (!audioCtx) return;
 
-// Shuffle sentences
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+  const now = audioCtx.currentTime;
+  const freq = SCALE[cho % SCALE.length];
+
+  // 중성으로 미세 피치 조절
+  const isYang = YANG_VOWELS.has(jung);
+  const pitchMod = isYang ? 1.0 : 0.98;
+
+  // 종성으로 지속시간 결정
+  const hasJong = jong > 0;
+  const duration = hasJong ? 0.8 : 0.5;
+
+  // Oscillator 1 - main tone
+  const osc1 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  osc1.type = isYang ? 'sine' : 'triangle';
+  osc1.frequency.setValueAtTime(freq * pitchMod, now);
+  gain1.gain.setValueAtTime(0, now);
+  gain1.gain.linearRampToValueAtTime(0.25, now + 0.03);
+  gain1.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  osc1.connect(gain1);
+  gain1.connect(masterGain);
+  osc1.start(now);
+  osc1.stop(now + duration);
+
+  // Oscillator 2 - harmonic (5th above, softer)
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(freq * 1.5 * pitchMod, now);
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(0.08, now + 0.05);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.7);
+  osc2.connect(gain2);
+  gain2.connect(masterGain);
+  osc2.start(now);
+  osc2.stop(now + duration);
+
+  // 종성이 있으면 저음 서브베이스 추가
+  if (hasJong) {
+    const osc3 = audioCtx.createOscillator();
+    const gain3 = audioCtx.createGain();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(freq * 0.5, now + 0.1);
+    gain3.gain.setValueAtTime(0, now + 0.1);
+    gain3.gain.linearRampToValueAtTime(0.1, now + 0.2);
+    gain3.gain.exponentialRampToValueAtTime(0.001, now + duration + 0.3);
+    osc3.connect(gain3);
+    gain3.connect(masterGain);
+    osc3.start(now + 0.1);
+    osc3.stop(now + duration + 0.3);
   }
-  return a;
 }
 
-let shuffled = shuffle(sentences);
+// ========== PARTICLE SYSTEM ==========
+const particles = [];
 
-function init() {
-  currentSentence = shuffled[sentenceIndex % shuffled.length];
-  currentIndex = 0;
-  startTime = null;
-  isStarted = false;
-  isFinished = false;
-  totalKeystrokes = 0;
-  correctKeystrokes = 0;
+// 초성별 색상 (hue)
+const CHO_HUES = [
+  0, 15, 35, 55, 70, 95, 125, 155, 170,
+  195, 210, 230, 250, 265, 280, 300, 320, 340, 350
+];
 
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+// 초성 발음 유형별 파티클 행동
+const CHO_TYPES = {
+  burst:  new Set([0,1,3,4,7,8,15,16,17]),  // 파열음: ㄱㄲㄷㄸㅂㅃㅋㅌㅍ
+  nasal:  new Set([2,6,11]),                  // 비음: ㄴㅁㅇ
+  fric:   new Set([9,10,18]),                 // 마찰음: ㅅㅆㅎ
+  liquid: new Set([5]),                       // 유음: ㄹ
+  affric: new Set([12,13,14]),                // 파찰음: ㅈㅉㅊ
+};
 
-  document.getElementById("timerDisplay").textContent = "0:00";
-  document.getElementById("wpmDisplay").textContent = "0";
-  document.getElementById("accuracyDisplay").textContent = "100%";
-  document.getElementById("progressFill").style.width = "0%";
-  document.getElementById("sentenceNum").textContent =
-    `문장 ${(sentenceIndex % shuffled.length) + 1} / ${shuffled.length}`;
-  document.getElementById("charCount").textContent = `0 / ${currentSentence.length} 글자`;
-
-  const inputArea = document.getElementById("inputArea");
-  inputArea.value = "";
-  inputArea.disabled = false;
-  inputArea.focus();
-
-  renderSentence();
+function getParticleType(cho) {
+  if (CHO_TYPES.burst.has(cho)) return 'burst';
+  if (CHO_TYPES.nasal.has(cho)) return 'nasal';
+  if (CHO_TYPES.fric.has(cho)) return 'fric';
+  if (CHO_TYPES.liquid.has(cho)) return 'liquid';
+  if (CHO_TYPES.affric.has(cho)) return 'affric';
+  return 'burst';
 }
 
-function renderSentence() {
-  const box = document.getElementById("sentenceBox");
-  const inputVal = document.getElementById("inputArea").value;
-  let html = "";
+function spawnParticles(cho, jung, jong) {
+  const cx = W / devicePixelRatio / 2 + (Math.random() - 0.5) * 200;
+  const cy = H / devicePixelRatio / 2 + (Math.random() - 0.5) * 100;
 
-  for (let i = 0; i < currentSentence.length; i++) {
-    let cls = "pending";
-    if (i < inputVal.length) {
-      cls = inputVal[i] === currentSentence[i] ? "correct" : "incorrect";
-    } else if (i === inputVal.length) {
-      cls = "current";
+  const hue = CHO_HUES[cho];
+  const isYang = YANG_VOWELS.has(jung);
+  const saturation = isYang ? 85 : 65;
+  const lightness = isYang ? 65 : 50;
+  const type = getParticleType(cho);
+
+  const count = jong > 0 ? 35 : 20;
+
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    let speed, size, life;
+
+    switch (type) {
+      case 'burst':
+        speed = 2 + Math.random() * 5;
+        size = 2 + Math.random() * 4;
+        life = 80 + Math.random() * 60;
+        break;
+      case 'nasal':
+        speed = 0.5 + Math.random() * 2;
+        size = 3 + Math.random() * 6;
+        life = 120 + Math.random() * 80;
+        break;
+      case 'fric':
+        speed = 1 + Math.random() * 4;
+        size = 1 + Math.random() * 3;
+        life = 60 + Math.random() * 40;
+        break;
+      case 'liquid':
+        speed = 1 + Math.random() * 3;
+        size = 2 + Math.random() * 5;
+        life = 100 + Math.random() * 80;
+        break;
+      case 'affric':
+        speed = 2 + Math.random() * 4;
+        size = 1.5 + Math.random() * 3;
+        life = 70 + Math.random() * 50;
+        break;
     }
-    const ch = currentSentence[i] === " " ? "&nbsp;" : escapeHtml(currentSentence[i]);
-    html += `<span class="char ${cls}">${ch}</span>`;
+
+    const hueVar = hue + (Math.random() - 0.5) * 30;
+
+    particles.push({
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (type === 'nasal' ? 1.5 : 0),
+      size,
+      life,
+      maxLife: life,
+      hue: hueVar,
+      sat: saturation,
+      light: lightness,
+      type,
+      spinAngle: angle,
+      spinSpeed: type === 'liquid' ? 0.05 : 0,
+    });
   }
-
-  box.innerHTML = html;
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+// ========== BACKGROUND STARS ==========
+const stars = [];
+for (let i = 0; i < 120; i++) {
+  stars.push({
+    x: Math.random(),
+    y: Math.random(),
+    size: Math.random() * 1.5,
+    alpha: Math.random() * 0.3 + 0.1,
+    speed: Math.random() * 0.0003 + 0.0001,
+  });
 }
 
-function startTimer() {
-  if (isStarted) return;
-  isStarted = true;
-  startTime = Date.now();
-  timerInterval = setInterval(updateTimer, 100);
-}
+// ========== RENDER LOOP ==========
+let frameCount = 0;
+let trailAlpha = 0.03;
 
-function updateTimer() {
-  if (!startTime) return;
-  const elapsed = (Date.now() - startTime) / 1000;
-  const min = Math.floor(elapsed / 60);
-  const sec = Math.floor(elapsed % 60);
-  document.getElementById("timerDisplay").textContent =
-    `${min}:${sec.toString().padStart(2, "0")}`;
-}
-
-function calcWpm() {
-  if (!startTime) return 0;
-  const elapsedMin = (Date.now() - startTime) / 60000;
-  if (elapsedMin < 0.01) return 0;
-  return Math.round(totalKeystrokes / elapsedMin);
-}
-
-function calcAccuracy() {
-  if (totalKeystrokes === 0) return 100;
-  return Math.round((correctKeystrokes / totalKeystrokes) * 100);
-}
-
-function getGrade(wpm) {
-  if (wpm >= 400) return { icon: "\u26A1", label: "번개" };
-  if (wpm >= 300) return { icon: "\uD83D\uDC06", label: "치타" };
-  if (wpm >= 200) return { icon: "\uD83D\uDC0E", label: "말" };
-  if (wpm >= 100) return { icon: "\uD83D\uDC07", label: "토끼" };
-  return { icon: "\uD83D\uDC22", label: "거북이" };
-}
-
-function showResult() {
-  const wpm = calcWpm();
-  const accuracy = calcAccuracy();
-  const elapsed = (Date.now() - startTime) / 1000;
-  const min = Math.floor(elapsed / 60);
-  const sec = Math.floor(elapsed % 60);
-  const grade = getGrade(wpm);
-
-  document.getElementById("resultGradeIcon").textContent = grade.icon;
-  document.getElementById("resultGradeLabel").textContent = grade.label;
-  document.getElementById("resultWpm").textContent = wpm;
-  document.getElementById("resultAccuracy").textContent = accuracy + "%";
-  document.getElementById("resultTime").textContent =
-    `${min}:${sec.toString().padStart(2, "0")}`;
-  document.getElementById("resultKeystrokes").textContent = totalKeystrokes;
-
-  document.getElementById("resultOverlay").classList.add("show");
-}
-
-function closeResult() {
-  document.getElementById("resultOverlay").classList.remove("show");
-}
-
-function finishTest() {
-  isFinished = true;
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  updateTimer();
-
-  document.getElementById("inputArea").disabled = true;
-  document.getElementById("wpmDisplay").textContent = calcWpm();
-  document.getElementById("accuracyDisplay").textContent = calcAccuracy() + "%";
-  document.getElementById("progressFill").style.width = "100%";
-
-  setTimeout(showResult, 300);
-}
-
-function restartSame() {
-  init();
-}
-
-function nextSentence() {
-  sentenceIndex++;
-  if (sentenceIndex >= shuffled.length) {
-    shuffled = shuffle(sentences);
-    sentenceIndex = 0;
+function drawStars() {
+  const sw = W / devicePixelRatio;
+  const sh = H / devicePixelRatio;
+  for (const s of stars) {
+    s.alpha = 0.1 + Math.sin(frameCount * s.speed * 60) * 0.15;
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x * sw, s.y * sh, s.size, 0, Math.PI * 2);
+    ctx.fill();
   }
-  init();
 }
 
-// Input handler
-document.getElementById("inputArea").addEventListener("input", function (e) {
-  if (isFinished) return;
+function updateAndDrawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life--;
 
-  const val = this.value;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
 
-  // Start timer on first input
-  if (!isStarted && val.length > 0) {
-    startTimer();
+    // Physics
+    const friction = 0.985;
+    p.vx *= friction;
+    p.vy *= friction;
+
+    if (p.type === 'nasal') {
+      p.vy -= 0.02; // float up
+      p.vx += Math.sin(frameCount * 0.02 + p.spinAngle) * 0.05;
+    } else if (p.type === 'liquid') {
+      p.spinAngle += p.spinSpeed;
+      p.vx += Math.cos(p.spinAngle) * 0.15;
+      p.vy += Math.sin(p.spinAngle) * 0.15;
+    } else if (p.type === 'fric') {
+      p.vx += (Math.random() - 0.5) * 0.3;
+      p.vy += (Math.random() - 0.5) * 0.3;
+    } else {
+      p.vy += 0.02; // slight gravity
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Draw
+    const progress = p.life / p.maxLife;
+    const alpha = progress * 0.8;
+    const size = p.size * (0.5 + progress * 0.5);
+
+    // Glow
+    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 3);
+    gradient.addColorStop(0, `hsla(${p.hue}, ${p.sat}%, ${p.light}%, ${alpha})`);
+    gradient.addColorStop(0.4, `hsla(${p.hue}, ${p.sat}%, ${p.light}%, ${alpha * 0.4})`);
+    gradient.addColorStop(1, `hsla(${p.hue}, ${p.sat}%, ${p.light}%, 0)`);
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core
+    ctx.fillStyle = `hsla(${p.hue}, ${p.sat}%, ${Math.min(p.light + 20, 90)}%, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fill();
   }
+}
 
-  // Count keystrokes: compare last character typed
-  if (val.length > currentIndex) {
-    // Characters were added
-    for (let i = currentIndex; i < val.length && i < currentSentence.length; i++) {
-      totalKeystrokes++;
-      if (val[i] === currentSentence[i]) {
-        correctKeystrokes++;
+function render() {
+  frameCount++;
+  const sw = W / devicePixelRatio;
+  const sh = H / devicePixelRatio;
+
+  // Trail effect - semi-transparent overlay
+  ctx.fillStyle = `rgba(5, 5, 16, ${trailAlpha})`;
+  ctx.fillRect(0, 0, sw, sh);
+
+  drawStars();
+  updateAndDrawParticles();
+
+  requestAnimationFrame(render);
+}
+
+render();
+
+// ========== INPUT HANDLING ==========
+const textInput = document.getElementById('textInput');
+const typedText = document.getElementById('typedText');
+const guide = document.getElementById('guide');
+const header = document.getElementById('header');
+const jamoInfo = document.getElementById('jamoInfo');
+
+let allTyped = '';
+let totalCho = {};
+let totalJung = {};
+let charCount = 0;
+let prevValue = '';
+
+textInput.addEventListener('input', function () {
+  initAudio();
+
+  const current = this.value;
+
+  // Find new characters
+  if (current.length > prevValue.length) {
+    const newChars = current.slice(prevValue.length);
+
+    for (const char of newChars) {
+      const jamo = decompose(char);
+      if (jamo) {
+        // Hide guide on first input
+        guide.classList.add('hidden');
+        header.classList.add('faded');
+
+        // Spawn particles and play sound
+        spawnParticles(jamo.cho, jamo.jung, jamo.jong);
+        playJamoSound(jamo.cho, jamo.jung, jamo.jong);
+
+        // Floating character display
+        showFloatingChar(char, jamo.cho);
+
+        // Track stats
+        charCount++;
+        const choName = CHOSEONG[jamo.cho];
+        totalCho[choName] = (totalCho[choName] || 0) + 1;
       }
     }
   }
-  currentIndex = val.length;
 
-  // Update displays
-  renderSentence();
-  const progress = Math.min((val.length / currentSentence.length) * 100, 100);
-  document.getElementById("progressFill").style.width = progress + "%";
-  document.getElementById("charCount").textContent =
-    `${Math.min(val.length, currentSentence.length)} / ${currentSentence.length} 글자`;
+  prevValue = current;
 
-  if (isStarted) {
-    document.getElementById("wpmDisplay").textContent = calcWpm();
-    document.getElementById("accuracyDisplay").textContent = calcAccuracy() + "%";
-  }
+  // Update typed text display
+  allTyped += current.slice(prevValue.length > 0 ? prevValue.length : 0);
 
-  // Check if complete
-  if (val.length >= currentSentence.length) {
-    finishTest();
-  }
+  // Update info
+  updateInfo();
 });
 
-// Prevent paste
-document.getElementById("inputArea").addEventListener("paste", function (e) {
-  e.preventDefault();
-});
-
-// Keyboard shortcut: Escape to restart, Tab to next
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    closeResult();
-    restartSame();
-  }
-  if (e.key === "Tab") {
+// Handle Enter key - commit text and clear input
+textInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') {
     e.preventDefault();
-    closeResult();
-    nextSentence();
+    allTyped = (allTyped ? allTyped : '') + this.value;
+    updateTypedDisplay();
+    this.value = '';
+    prevValue = '';
   }
 });
 
-// Initialize
-init();
+function updateTypedDisplay() {
+  // Show last 100 characters
+  const display = allTyped.slice(-100);
+  typedText.textContent = display;
+}
+
+function showFloatingChar(char, cho) {
+  const el = document.createElement('div');
+  el.className = 'char-display';
+  el.textContent = char;
+
+  const hue = CHO_HUES[cho];
+  el.style.color = `hsl(${hue}, 80%, 70%)`;
+
+  const x = 30 + Math.random() * 40;
+  const y = 20 + Math.random() * 40;
+  el.style.left = x + '%';
+  el.style.top = y + '%';
+
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+function updateInfo() {
+  const top3 = Object.entries(totalCho)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([k, v]) => `${k}:${v}`)
+    .join('  ');
+
+  jamoInfo.textContent = charCount > 0
+    ? `${charCount}글자  |  ${top3}`
+    : '';
+}
+
+// ========== CONTROLS ==========
+function clearCanvas() {
+  const sw = W / devicePixelRatio;
+  const sh = H / devicePixelRatio;
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, sw, sh);
+  particles.length = 0;
+  allTyped = '';
+  charCount = 0;
+  totalCho = {};
+  typedText.textContent = '';
+  jamoInfo.textContent = '';
+  textInput.value = '';
+  prevValue = '';
+  guide.classList.remove('hidden');
+  header.classList.remove('faded');
+}
+
+function saveImage() {
+  const link = document.createElement('a');
+  link.download = `한글공감각_${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// Focus input on load
+textInput.focus();
+
+// Refocus when clicking canvas area
+document.addEventListener('click', (e) => {
+  if (e.target === document.body || e.target === canvas) {
+    textInput.focus();
+  }
+});
 </script>
 </body>
 </html>
